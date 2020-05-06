@@ -41,7 +41,6 @@ int do_semop(message *);
 int is_sem_nil(void);
 int is_shm_nil(void);
 void sem_process_vm_notify(void);
-int do_printmessage(message *);
 
 EXTERN int identifier;
 EXTERN endpoint_t who_e;
