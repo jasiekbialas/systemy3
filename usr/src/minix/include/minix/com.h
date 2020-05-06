@@ -747,6 +747,7 @@
 #define IPC_SHMAT	(IPC_BASE+2)
 #define IPC_SHMDT	(IPC_BASE+3)
 #define IPC_SHMCTL	(IPC_BASE+4)
+#define IPC_PRINTMESSAGE (IPC_BASE+8)
 
 /* Semaphore */
 #define IPC_SEMGET	(IPC_BASE+5)

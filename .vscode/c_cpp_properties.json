@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**"
+                ]
+            },
+            "defines": [
+                "__minix",
+                "__lint__",
+                "_MINIX_SYSTEM",
+                "_SYSTEM",
+                "__i386__"
+            ],
+            "forcedInclude": []
+        }
+    ],
+    "version": 4
+}
