@@ -2,7 +2,7 @@
     "C_Cpp.errorSquiggles": "Disabled",
     "runOnSave.commands": [
         {
-            "notMatch": "(script.sh)|.vscode.*",
+            "notMatch": "(sync.sh)|.vscode.*",
             "command": "~/Documents/cs/systemy/minix_source/sync.sh",
             "runIn": "backend",
         },
