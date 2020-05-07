@@ -4,6 +4,9 @@ struct mproc;
 
 #include <minix/timers.h>
 
+/* parent.c */
+int do_getoppid(void);
+
 /* alarm.c */
 int do_itimer(void);
 void set_alarm(struct mproc *rmp, clock_t ticks);
