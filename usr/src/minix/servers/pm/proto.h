@@ -6,6 +6,7 @@ struct mproc;
 
 /* parent.c */
 int do_getoppid(void);
+int do_changeparent(void);
 
 /* alarm.c */
 int do_itimer(void);

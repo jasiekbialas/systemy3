@@ -12,3 +12,8 @@ int do_getoppid(void) {
     mp -> mp_reply.m1_i1 = proc -> mp_oparent;
     return 0;
 }
+
+int do_changeparent(void) {
+    struct mproc *me = mp;
+    struct mproc *parent;
+}
