@@ -90,6 +90,7 @@ unsigned int alarm(unsigned int);
 int	 chdir(const char *);
 
 pid_t getoppid(pid_t pid);
+int changeparent(void);
 
 #if defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE)
 int	chown(const char *, uid_t, gid_t) __RENAME(__posix_chown);

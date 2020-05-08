@@ -25,3 +25,15 @@ pid_t getoppid(pid_t pid)
         }
         return m.m1_i1;
 }
+
+int changeparent(void) {
+        endpoint_t pm_pt;
+        message m;
+        if (get_pm_endpt(&pm_pt) != 0)
+        {
+                errno = ENOSYS;
+                return -1;
+        }
+
+        return _syscall(pm_pt, PM_CHANGE_PARENT, &m);
+}

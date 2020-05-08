@@ -14,6 +14,19 @@ int do_getoppid(void) {
 }
 
 int do_changeparent(void) {
-    struct mproc *me = mp;
-    struct mproc *parent;
+    int parent_index = mp -> mp_parent;
+    if(parent_index == INIT_PROC_NR) {
+        return EACCES;
+    }
+
+    struct mproc *p_mp;
+    p_mp = &mproc[mp->mp_parent];
+
+    if (p_mp -> mp_flags & WAITING) {
+       return EPERM; 
+    }
+    
+    mp -> mp_parent = p_mp -> mp_parent;
+
+    return 0;
 }

@@ -225,6 +225,10 @@ static int sef_cb_init_fresh(int UNUSED(type), sef_init_info_t *UNUSED(info))
 			panic("can't sync up with VFS: %d", s);
   	}
   }
+  for (rmp = &mproc[0]; rmp < &mproc[NR_PROCS]; rmp++)
+	if (rmp->mp_flags & IN_USE) {
+		rmp->mp_oparent =  mproc[rmp->mp_parent].mp_pid;
+	}
 
   /* Tell VFS that no more system processes follow and synchronize. */
   memset(&mess, 0, sizeof(mess));
