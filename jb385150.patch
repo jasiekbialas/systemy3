@@ -1,0 +1,245 @@
+diff --git a/usr/include/minix/callnr.h b/usr/include/minix/callnr.h
+index 6030687..d61ea5e 100644
+--- a/usr/include/minix/callnr.h
++++ b/usr/include/minix/callnr.h
+@@ -58,8 +58,10 @@
+ #define PM_GETEPINFO		(PM_BASE + 45)
+ #define PM_GETPROCNR		(PM_BASE + 46)
+ #define PM_GETSYSINFO		(PM_BASE + 47)
++#define PM_GETOPPID         (PM_BASE + 48)
++#define PM_CHANGE_PARENT    (PM_BASE + 49)
+ 
+-#define NR_PM_CALLS		48	/* highest number from base plus one */
++#define NR_PM_CALLS		50	/* highest number from base plus one */
+ 
+ /*===========================================================================*
+  *				Calls to VFS				     *
+diff --git a/usr/include/unistd.h b/usr/include/unistd.h
+index 9d13199..62f4cf8 100644
+--- a/usr/include/unistd.h
++++ b/usr/include/unistd.h
+@@ -88,6 +88,10 @@ __dead	 void _exit(int);
+ int	 access(const char *, int);
+ unsigned int alarm(unsigned int);
+ int	 chdir(const char *);
++
++pid_t getoppid(pid_t pid);
++int changeparent(void);
++
+ #if defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE)
+ int	chown(const char *, uid_t, gid_t) __RENAME(__posix_chown);
+ #else
+diff --git a/usr/src/include/unistd.h b/usr/src/include/unistd.h
+index 9d13199..62f4cf8 100644
+--- a/usr/src/include/unistd.h
++++ b/usr/src/include/unistd.h
+@@ -88,6 +88,10 @@ __dead	 void _exit(int);
+ int	 access(const char *, int);
+ unsigned int alarm(unsigned int);
+ int	 chdir(const char *);
++
++pid_t getoppid(pid_t pid);
++int changeparent(void);
++
+ #if defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE)
+ int	chown(const char *, uid_t, gid_t) __RENAME(__posix_chown);
+ #else
+diff --git a/usr/src/lib/libc/misc/Makefile.inc b/usr/src/lib/libc/misc/Makefile.inc
+index 08a246c..49aa529 100644
+--- a/usr/src/lib/libc/misc/Makefile.inc
++++ b/usr/src/lib/libc/misc/Makefile.inc
+@@ -7,4 +7,4 @@
+ SRCS+=	initfini.c
+ 
+ # for -fstack-protector
+-SRCS+=	stack_protector.c
++SRCS+=	stack_protector.c parent.c
+diff --git a/usr/src/lib/libc/misc/parent.c b/usr/src/lib/libc/misc/parent.c
+new file mode 100644
+index 0000000..cf37ab9
+--- /dev/null
++++ b/usr/src/lib/libc/misc/parent.c
+@@ -0,0 +1,39 @@
++#include <lib.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/types.h>
++#include <unistd.h>
++#include <minix/rs.h>
++
++int get_pm_endpt(endpoint_t *pt)
++{
++        return minix_rs_lookup("pm", pt);
++}
++
++pid_t getoppid(pid_t pid)
++{
++        endpoint_t pm_pt;
++        message m;
++        if (get_pm_endpt(&pm_pt) != 0)
++        {
++                errno = ENOSYS;
++                return -1;
++        }
++        m.m1_i1 = pid;
++        if(_syscall(pm_pt, PM_GETOPPID, &m)) {
++            return -1;
++        }
++        return m.m1_i1;
++}
++
++int changeparent(void) {
++        endpoint_t pm_pt;
++        message m;
++        if (get_pm_endpt(&pm_pt) != 0)
++        {
++                errno = ENOSYS;
++                return -1;
++        }
++
++        return _syscall(pm_pt, PM_CHANGE_PARENT, &m);
++}
+\ No newline at end of file
+diff --git a/usr/src/minix/include/minix/callnr.h b/usr/src/minix/include/minix/callnr.h
+index 6030687..d61ea5e 100644
+--- a/usr/src/minix/include/minix/callnr.h
++++ b/usr/src/minix/include/minix/callnr.h
+@@ -58,8 +58,10 @@
+ #define PM_GETEPINFO		(PM_BASE + 45)
+ #define PM_GETPROCNR		(PM_BASE + 46)
+ #define PM_GETSYSINFO		(PM_BASE + 47)
++#define PM_GETOPPID         (PM_BASE + 48)
++#define PM_CHANGE_PARENT    (PM_BASE + 49)
+ 
+-#define NR_PM_CALLS		48	/* highest number from base plus one */
++#define NR_PM_CALLS		50	/* highest number from base plus one */
+ 
+ /*===========================================================================*
+  *				Calls to VFS				     *
+diff --git a/usr/src/minix/servers/pm/Makefile b/usr/src/minix/servers/pm/Makefile
+index 75f4c54..abbbea2 100644
+--- a/usr/src/minix/servers/pm/Makefile
++++ b/usr/src/minix/servers/pm/Makefile
+@@ -4,7 +4,7 @@
+ PROG=	pm
+ SRCS=	main.c forkexit.c exec.c time.c alarm.c \
+ 	signal.c utility.c table.c trace.c getset.c misc.c \
+-	profile.c mcontext.c schedule.c
++	profile.c mcontext.c schedule.c parent.c
+ 
+ DPADD+=	${LIBSYS} ${LIBTIMERS}
+ LDADD+=	-lsys -ltimers
+diff --git a/usr/src/minix/servers/pm/forkexit.c b/usr/src/minix/servers/pm/forkexit.c
+index 218fff5..be78021 100644
+--- a/usr/src/minix/servers/pm/forkexit.c
++++ b/usr/src/minix/servers/pm/forkexit.c
+@@ -85,6 +85,7 @@ int do_fork()
+   procs_in_use++;
+   *rmc = *rmp;			/* copy parent's process slot to child's */
+   rmc->mp_parent = who_p;			/* record child's parent */
++  rmc->mp_oparent = rmp -> mp_pid;
+   if (!(rmc->mp_trace_flags & TO_TRACEFORK)) {
+ 	rmc->mp_tracer = NO_TRACER;		/* no tracer attached */
+ 	rmc->mp_trace_flags = 0;
+@@ -182,6 +183,7 @@ int do_srv_fork()
+   procs_in_use++;
+   *rmc = *rmp;			/* copy parent's process slot to child's */
+   rmc->mp_parent = who_p;			/* record child's parent */
++  rmc->mp_oparent = rmp -> mp_pid;
+   if (!(rmc->mp_trace_flags & TO_TRACEFORK)) {
+ 	rmc->mp_tracer = NO_TRACER;		/* no tracer attached */
+ 	rmc->mp_trace_flags = 0;
+diff --git a/usr/src/minix/servers/pm/main.c b/usr/src/minix/servers/pm/main.c
+index 3e5004b..ca4b982 100644
+--- a/usr/src/minix/servers/pm/main.c
++++ b/usr/src/minix/servers/pm/main.c
+@@ -225,6 +225,10 @@ static int sef_cb_init_fresh(int UNUSED(type), sef_init_info_t *UNUSED(info))
+ 			panic("can't sync up with VFS: %d", s);
+   	}
+   }
++  for (rmp = &mproc[0]; rmp < &mproc[NR_PROCS]; rmp++)
++	if (rmp->mp_flags & IN_USE) {
++		rmp->mp_oparent =  mproc[rmp->mp_parent].mp_pid;
++	}
+ 
+   /* Tell VFS that no more system processes follow and synchronize. */
+   memset(&mess, 0, sizeof(mess));
+diff --git a/usr/src/minix/servers/pm/mproc.h b/usr/src/minix/servers/pm/mproc.h
+index b99a54c..c3795b7 100644
+--- a/usr/src/minix/servers/pm/mproc.h
++++ b/usr/src/minix/servers/pm/mproc.h
+@@ -70,6 +70,7 @@ EXTERN struct mproc {
+   char mp_name[PROC_NAME_LEN];	/* process name */
+ 
+   int mp_magic;			/* sanity check, MP_MAGIC */
++  int mp_oparent;
+ } mproc[NR_PROCS];
+ 
+ /* Flag values */
+diff --git a/usr/src/minix/servers/pm/parent.c b/usr/src/minix/servers/pm/parent.c
+new file mode 100644
+index 0000000..bc35720
+--- /dev/null
++++ b/usr/src/minix/servers/pm/parent.c
+@@ -0,0 +1,32 @@
++#include "pm.h"
++#include "mproc.h"
++
++int do_getoppid(void) {
++    pid_t pid = m_in.m1_i1;
++    struct mproc* proc = find_proc(pid);
++    if(proc == NULL) {
++        errno = EINVAL;
++        return -1;
++    }
++    
++    mp -> mp_reply.m1_i1 = proc -> mp_oparent;
++    return 0;
++}
++
++int do_changeparent(void) {
++    int parent_index = mp -> mp_parent;
++    if(parent_index == INIT_PROC_NR) {
++        return EACCES;
++    }
++
++    struct mproc *p_mp;
++    p_mp = &mproc[mp->mp_parent];
++
++    if (p_mp -> mp_flags & WAITING) {
++       return EPERM; 
++    }
++    
++    mp -> mp_parent = p_mp -> mp_parent;
++
++    return 0;
++}
+\ No newline at end of file
+diff --git a/usr/src/minix/servers/pm/proto.h b/usr/src/minix/servers/pm/proto.h
+index 0d27fc8..32909b9 100644
+--- a/usr/src/minix/servers/pm/proto.h
++++ b/usr/src/minix/servers/pm/proto.h
+@@ -4,6 +4,10 @@ struct mproc;
+ 
+ #include <minix/timers.h>
+ 
++/* parent.c */
++int do_getoppid(void);
++int do_changeparent(void);
++
+ /* alarm.c */
+ int do_itimer(void);
+ void set_alarm(struct mproc *rmp, clock_t ticks);
+diff --git a/usr/src/minix/servers/pm/table.c b/usr/src/minix/servers/pm/table.c
+index 8c8e24a..6c34365 100644
+--- a/usr/src/minix/servers/pm/table.c
++++ b/usr/src/minix/servers/pm/table.c
+@@ -58,5 +58,7 @@ int (* const call_vec[NR_PM_CALLS])(void) = {
+ 	CALL(PM_EXEC_RESTART)	= do_execrestart,
+ 	CALL(PM_GETEPINFO)	= do_getepinfo,		/* getepinfo(2) */
+ 	CALL(PM_GETPROCNR)	= do_getprocnr,		/* getprocnr(2) */
+-	CALL(PM_GETSYSINFO)	= do_getsysinfo		/* getsysinfo(2) */
++	CALL(PM_GETSYSINFO)	= do_getsysinfo,		/* getsysinfo(2) */
++	CALL(PM_GETOPPID) = do_getoppid,
++	CALL(PM_CHANGE_PARENT) = do_changeparent
+ };
