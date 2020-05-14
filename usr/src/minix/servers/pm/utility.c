@@ -136,3 +136,20 @@ message *m_ptr;
 
   rmp->mp_flags |= VFS_CALL;
 }
+
+/*===========================================================================*
+ *				check_if_up_family_tree		 	     *
+ *===========================================================================*/
+
+int check_if_up_family_tree(older, younger) 
+struct mproc *older;
+struct mproc *younger;
+{
+	while(younger -> mp_pid != INIT_PID && younger -> mp_pid != older -> mp_pid) {
+		younger = &mproc[younger -> mp_parent];
+	}
+
+	if(younger -> mp_pid == INIT_PID) return 0;
+
+	return 1;
+}
