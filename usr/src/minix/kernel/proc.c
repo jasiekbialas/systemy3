@@ -1722,7 +1722,7 @@ static struct proc * pick_proc(void)
 	register struct proc *rp;			/* process to run */
 	struct proc **rdy_head;
 	int q;
-	static int curr_q = KUDOS_Q_0;				/* iterate over queues */
+	static int curr_q = 0;				/* iterate over queues */
 
 	/* Check each of the scheduling queues for ready processes. The number of
 	* queues is defined in proc.h, and priorities are set in the task table.
@@ -1742,11 +1742,11 @@ static struct proc * pick_proc(void)
 
 	q = curr_q;
 	do {
-		rp = rdy_head[curr_q];
+		rp = rdy_head[KUDOS_Q_0 + curr_q];
 
 
 		if(!rp) {
-			TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
+			TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, KUDOS_Q_0 + curr_q););
 			curr_q = (curr_q+1) % 8;
 		} else {
 			assert(proc_is_runnable(rp));
