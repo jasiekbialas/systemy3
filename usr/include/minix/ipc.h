@@ -1588,13 +1588,6 @@ typedef struct {
 _ASSERT_MSG_SIZE(mess_pm_sched_scheduling_set_nice);
 
 typedef struct {
-	endpoint_t endpoint;
-
-	uint8_t padding[52];
-} mess_pm_sched_scheduling_give_kudos;
-_ASSERT_MSG_SIZE(mess_pm_sched_scheduling_give_kudos);
-
-typedef struct {
 	int status;
 
 	uint8_t padding[52];
