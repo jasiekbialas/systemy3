@@ -243,7 +243,7 @@ int do_start_scheduling(message *m_ptr)
 		parent = &schedproc[parent_nr_n];
 
 		rmp->kudos = parent->kudos / 2;
-		parent->kudos = parent->kudos%2 ? (parent->kudos/2) + 1 : parent->kudos/2;
+		parent->kudos = (parent->kudos+1)/2;
 
 		parent->original_priority = get_kudos_queue(parent->kudos);
 		rmp->time_slice = schedproc[parent_nr_n].time_slice;
@@ -341,7 +341,6 @@ int do_nice(message *m_ptr)
  *===========================================================================*/
 int do_kudos(message *m_ptr)
 {
-	printf("do_kudos\n");
 	struct schedproc *rmp;
 	int proc_nr_n;
 
@@ -349,17 +348,17 @@ int do_kudos(message *m_ptr)
 	if (!accept_message(m_ptr))
 		return EPERM;
 
-	if (sched_isokendpt(m_ptr->m_pm_sched_scheduling_give_kudos.endpoint, &proc_nr_n) != OK) {
+	if (sched_isokendpt(m_ptr->m_pm_sched_scheduling_set_nice.endpoint, &proc_nr_n) != OK) {
 		printf("SCHED: WARNING: got an invalid endpoint in OoQ msg "
-		"%d\n", m_ptr->m_pm_sched_scheduling_give_kudos.endpoint);
+		"%d\n", m_ptr->m_pm_sched_scheduling_set_nice.endpoint);
 		return EBADEPT;
 	}
 
 	rmp = &schedproc[proc_nr_n];
 	rmp->kudos += 1;
-	m_ptr -> m1_i1 = rmp -> kudos;
 
 	rmp -> original_priority = get_kudos_queue(rmp->kudos);
+	m_ptr -> m1_i1 = rmp -> original_priority;
 
 	return OK;
 }

@@ -125,7 +125,8 @@ int do_givekudos(void) {
 		return (EINVAL);
 	}
 
-	m.m_pm_sched_scheduling_give_kudos.endpoint	= give_to->mp_endpoint;
+	m.m_pm_sched_scheduling_set_nice.endpoint = give_to->mp_endpoint;
+
 	if ((rv = _taskcall(give_to->mp_scheduler, SCHEDULING_GIVE_KUDOS, &m))) {
 		return rv;
 	}

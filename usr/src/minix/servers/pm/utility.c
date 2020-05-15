@@ -151,5 +151,5 @@ struct mproc *younger;
 		younger = &mproc[younger -> mp_parent];
 	} while(younger -> mp_pid != INIT_PID);
 
-	return 1;
+	return 0;
 }

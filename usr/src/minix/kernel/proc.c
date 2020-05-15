@@ -1716,7 +1716,7 @@ static struct proc * pick_proc(void)
  register struct proc *rp;			/* process to run */
   struct proc **rdy_head;
   int q;				/* iterate over queues */
-  static int curr_q = 7;
+  static int curr_q = 0;
 
   /* Check each of the scheduling queues for ready processes. The number of
    * queues is defined in proc.h, and priorities are set in the task table.
@@ -1735,33 +1735,16 @@ static struct proc * pick_proc(void)
 		return rp;
 	}
 
-	int start_q = curr_q;
-	int firstTime = 1;
-
-	while(1) {
-		if(!(rp = rdy_head[curr_q])) {
-			TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, curr_q););
-
-			if (curr_q == start_q) {
-				if (firstTime) firstTime = 0;
-				else {
-					rp = rdy_head[15];
-					curr_q = 7;
-					break;
-				}
-			}
-
-			curr_q++;
-			if (curr_q == 15) curr_q = 7;
+	for(int i = 0; i < 8; i++, curr_q = (curr_q+1) %8) {
+		if(!(rp = rdy_head[KUDOS_Q_0 + curr_q])) {
+			TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, KUDOS_Q_0 + curr_q););
 			continue;
-		} else 
-			break;
+		}
+		assert(proc_is_runnable(rp));
+		if (priv(rp)->s_flags & BILLABLE)	 	
+			get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
+		return rp;
 	}
-
-	assert(proc_is_runnable(rp));
-	if (priv(rp)->s_flags & BILLABLE)	 	
-		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
-	return rp;
 
   return NULL;
 }

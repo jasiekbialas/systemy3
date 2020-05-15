@@ -10,4 +10,11 @@ int main(int argc, char** argv)
     for(int i = 1; i< 300; i++) {
         printf("i: %d  -> k: %d\n", i, givekudos(i));
     }
+    for(int i = 1; i< 300; i++) {
+        printf("i: %d  -> k: %d\n", i, givekudos(i));
+    }
+    for(int i = 1; i< 300; i++) {
+        printf("i: %d  -> k: %d\n", i, givekudos(i));
+    }
+
 }

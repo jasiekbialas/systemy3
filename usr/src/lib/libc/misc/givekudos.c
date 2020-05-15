@@ -21,7 +21,7 @@ int givekudos(pid_t pid)
         }
         m.m1_i1 = pid;
         if(_syscall(pm_pt, PM_GIVEKUDOS, &m)) {
-            return 0;
+            return -1;
         }
         return m.m1_i1;
 }
