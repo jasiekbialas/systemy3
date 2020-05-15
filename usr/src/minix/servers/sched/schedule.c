@@ -294,47 +294,55 @@ int do_nice(message *m_ptr)
 	return rv;
 }
 
+static int get_kudos_queue(int kudos) {
+	if(kudos >= 50) return 0;
+	if(kudos >= 25) return 1;
+	if(kudos >= 10) return 2;
+	return 3;
+}
+
 /*===========================================================================*
  *				do_kudos					     *
  *===========================================================================*/
 int do_kudos(message *m_ptr)
 {
-	// struct schedproc *rmp;
-	// int rv;
-	// int proc_nr_n;
-	// unsigned new_q, old_q, old_max_q;
+	printf("do_kudos\n");
+	struct schedproc *rmp;
+	int rv;
+	int proc_nr_n;
+	unsigned new_q, old_q, old_kudos;
 
-	// /* check who can send you requests */
-	// if (!accept_message(m_ptr))
-	// 	return EPERM;
+	/* check who can send you requests */
+	if (!accept_message(m_ptr))
+		return EPERM;
 
-	// if (sched_isokendpt(m_ptr->m_pm_sched_scheduling_set_nice.endpoint, &proc_nr_n) != OK) {
-	// 	printf("SCHED: WARNING: got an invalid endpoint in OoQ msg "
-	// 	"%d\n", m_ptr->m_pm_sched_scheduling_set_nice.endpoint);
-	// 	return EBADEPT;
-	// }
+	if (sched_isokendpt(m_ptr->m_pm_sched_scheduling_give_kudos.endpoint, &proc_nr_n) != OK) {
+		printf("SCHED: WARNING: got an invalid endpoint in OoQ msg "
+		"%d\n", m_ptr->m_pm_sched_scheduling_give_kudos.endpoint);
+		return EBADEPT;
+	}
 
-	// rmp = &schedproc[proc_nr_n];
-	// new_q = m_ptr->m_pm_sched_scheduling_set_nice.maxprio;
-	// if (new_q >= NR_SCHED_QUEUES) {
-	// 	return EINVAL;
-	// }
+	rmp = &schedproc[proc_nr_n];
+	rmp->kudos += 1;
+	m_ptr -> m1_i1 = rmp -> kudos;
 
-	// /* Store old values, in case we need to roll back the changes */
-	// old_q     = rmp->priority;
-	// old_max_q = rmp->max_priority;
+	/* Store old values, in case we need to roll back the changes */
+	old_q = rmp->priority;
+	new_q = get_kudos_queue(rmp->kudos);
+	rv = OK;
 
+	// if(old_q != new_q) {
 	// /* Update the proc entry and reschedule the process */
-	// rmp->max_priority = rmp->priority = new_q;
+	// 	rmp->priority = new_q;
 
-	// if ((rv = schedule_process_local(rmp)) != OK) {
-	// 	/* Something went wrong when rescheduling the process, roll
-	// 	 * back the changes to proc struct */
-	// 	rmp->priority     = old_q;
-	// 	rmp->max_priority = old_max_q;
+	// 	if ((rv = schedule_process_local(rmp)) != OK) {
+	// 		/* Something went wrong when rescheduling the process, roll
+	// 			* back the changes to proc struct */
+	// 		rmp->priority = old_q;
+	// 		rmp->kudos -= 1;
+	// 	}
 	// }
-
-	// return rv;
+	return rv;
 }
 
 

@@ -114,17 +114,22 @@ int sched_nice(struct mproc *rmp, int nice)
 int do_givekudos(void) {
 
 	struct mproc *give_to = find_proc(m_in.m1_i1);
+	int rv;
+	message m;
 
-	if (!give_to || give_to->mp_scheduler == KERNEL || give_to->mp_scheduler == NONE)
+	if (!give_to || give_to->mp_scheduler == KERNEL || give_to->mp_scheduler == NONE) {
 		return (EINVAL);
-
-	if(check_if_up_family_tree(mp, give_to) || check_if_up_family_tree(give_to, mp))
-		return (EINVAL);
-
-
-	if ((rv = _taskcall(rmp->mp_scheduler, SCHEDULING_SET_KUDOS, &m_in))) {
-		return rv;
 	}
 
+	if(check_if_up_family_tree(mp, give_to) || check_if_up_family_tree(give_to, mp)){
+		return (EINVAL);
+	}
+
+	m.m_pm_sched_scheduling_give_kudos.endpoint	= give_to->mp_endpoint;
+	if ((rv = _taskcall(give_to->mp_scheduler, SCHEDULING_GIVE_KUDOS, &m))) {
+		return rv;
+	}
+	mp -> mp_reply.m1_i1 = m.m1_i1;
+	
 	return (OK);	
 }

@@ -145,11 +145,11 @@ int check_if_up_family_tree(older, younger)
 struct mproc *older;
 struct mproc *younger;
 {
-	while(younger -> mp_pid != INIT_PID && younger -> mp_pid != older -> mp_pid) {
-		younger = &mproc[younger -> mp_parent];
-	}
 
-	if(younger -> mp_pid == INIT_PID) return 0;
+	do {
+		if(older -> mp_pid == younger -> mp_pid) return 1;
+		younger = &mproc[younger -> mp_parent];
+	} while(younger -> mp_pid != INIT_PID);
 
 	return 1;
 }

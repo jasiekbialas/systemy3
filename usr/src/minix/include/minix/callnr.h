@@ -60,7 +60,7 @@
 #define PM_GETSYSINFO		(PM_BASE + 47)
 #define PM_GIVEKUDOS        (PM_BASE + 48)
 
-#define NR_PM_CALLS		489	/* highest number from base plus one */
+#define NR_PM_CALLS		49	/* highest number from base plus one */
 
 /*===========================================================================*
  *				Calls to VFS				     *

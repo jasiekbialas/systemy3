@@ -70,7 +70,7 @@ int main(void)
 		case SCHEDULING_SET_NICE:
 			result = do_nice(&m_in);
 			break;
-		case SCHEDULING_SET_KUDOS:
+		case SCHEDULING_GIVE_KUDOS:
 			result = do_kudos(&m_in);
 			break;
 		case SCHEDULING_NO_QUANTUM:
