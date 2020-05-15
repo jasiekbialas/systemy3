@@ -34,7 +34,6 @@ int main(void)
 	if (OK != (s=sys_getmachine(&machine)))
 		panic("couldn't get machine info: %d", s);
 	/* Initialize scheduling timers, used for running balance_queues */
-	init_scheduling();
 
 	/* This is SCHED's main loop - get work and do it, forever and forever. */
 	while (TRUE) {

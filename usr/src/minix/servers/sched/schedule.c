@@ -5,7 +5,6 @@
  *   do_start_scheduling  Request to start scheduling a proc
  *   do_stop_scheduling   Request to stop scheduling a proc
  *   do_nice		  Request to change the nice level on a proc
- *   init_scheduling      Called from main.c to set up/prepare scheduling
  */
 #include "sched.h"
 #include <math.h>
@@ -15,13 +14,7 @@
 #include <machine/archtypes.h>
 #include "kernel/proc.h" /* for queue constants */
 
-static minix_timer_t sched_timer;
-static unsigned balance_timeout;
-
-#define BALANCE_TIMEOUT	5 /* how often to balance queues in seconds */
-
 static int schedule_process(struct schedproc * rmp, unsigned flags);
-static void balance_queues(minix_timer_t *tp);
 
 #define SCHEDULE_CHANGE_PRIO	0x1
 #define SCHEDULE_CHANGE_QUANTUM	0x2
@@ -397,41 +390,3 @@ static int schedule_process(struct schedproc * rmp, unsigned flags)
 
 	return err;
 }
-
-
-/*===========================================================================*
- *				start_scheduling			     *
- *===========================================================================*/
-
-void init_scheduling(void)
-{
-	// balance_timeout = BALANCE_TIMEOUT * sys_hz();
-	// init_timer(&sched_timer);
-	// set_timer(&sched_timer, balance_timeout, balance_queues, 0);
-}
-
-/*===========================================================================*
- *				balance_queues				     *
- *===========================================================================*/
-
-/* This function in called every 100 ticks to rebalance the queues. The current
- * scheduler bumps processes down one priority when ever they run out of
- * quantum. This function will find all proccesses that have been bumped down,
- * and pulls them back up. This default policy will soon be changed.
- */
-// static void balance_queues(minix_timer_t *tp)
-// {
-// 	struct schedproc *rmp;
-// 	int proc_nr;
-
-// 	for (proc_nr=0, rmp=schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
-// 		if (rmp->flags & IN_USE) {
-// 			if (rmp->priority > rmp->max_priority) {
-// 				rmp->priority -= 1; /* increase priority */
-// 				schedule_process_local(rmp);
-// 			}
-// 		}
-// 	}
-
-// 	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
-// }
