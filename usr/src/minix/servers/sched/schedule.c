@@ -100,7 +100,7 @@ int do_noquantum(message *m_ptr)
 	}
 
 	rmp = &schedproc[proc_nr_n];
-	rmp -= 1;
+	rmp->repeat -= 1;
 
 	if (rmp->repeat == 0) {
 		rmp->repeat = 1;
@@ -125,7 +125,8 @@ int do_noquantum(message *m_ptr)
 				break;
 		}
 
-		rmp ->priority = (rmp -> priority + add_prio) % 8;
+		rmp -> priority = rmp -> priority + add_prio;
+		if (rmp -> priority > 14) rmp -> priority -= 8;
 	}
 
 	if ((rv = schedule_process_local(rmp)) != OK) {
@@ -196,6 +197,7 @@ int do_start_scheduling(message *m_ptr)
 	rmp->endpoint     = m_ptr->m_lsys_sched_scheduling_start.endpoint;
 	rmp->parent       = m_ptr->m_lsys_sched_scheduling_start.parent;
 	rmp->kudos = 0;
+	rmp->repeat = 1;
 	
 	/* Inherit current priority and time slice from parent. Since there
 	 * is currently only one scheduler scheduling the whole system, this
@@ -251,6 +253,7 @@ int do_start_scheduling(message *m_ptr)
 		/* not reachable */
 		assert(0);
 	}
+
 	rmp->original_priority = get_kudos_queue(rmp->kudos);
 	rmp->priority = KUDOS_Q_0 + rmp->original_priority;
 
