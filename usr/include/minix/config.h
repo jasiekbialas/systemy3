@@ -59,6 +59,7 @@
 /* Scheduling priorities. Values must start at zero (highest
  * priority) and increment.
  */
+#define KUDOS_Q_0		7
 #define NR_SCHED_QUEUES   16	/* MUST equal minimum priority + 1 */
 #define TASK_Q		   0	/* highest, used for kernel tasks */
 #define MAX_USER_Q  	   0    /* highest priority for user processes */   

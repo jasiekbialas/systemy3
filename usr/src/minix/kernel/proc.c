@@ -1719,25 +1719,55 @@ static struct proc * pick_proc(void)
  *
  * This function always uses the run queues of the local cpu!
  */
-  register struct proc *rp;			/* process to run */
-  struct proc **rdy_head;
-  int q;				/* iterate over queues */
+	register struct proc *rp;			/* process to run */
+	struct proc **rdy_head;
+	int q;
+	static int curr_q = KUDOS_Q_0;				/* iterate over queues */
 
-  /* Check each of the scheduling queues for ready processes. The number of
-   * queues is defined in proc.h, and priorities are set in the task table.
-   * If there are no processes ready to run, return NULL.
-   */
-  rdy_head = get_cpulocal_var(run_q_head);
-  for (q=0; q < NR_SCHED_QUEUES; q++) {	
+	/* Check each of the scheduling queues for ready processes. The number of
+	* queues is defined in proc.h, and priorities are set in the task table.
+	* If there are no processes ready to run, return NULL.
+	*/
+	rdy_head = get_cpulocal_var(run_q_head);
+	for (q=0; q < KUDOS_Q_0; q++) {	
+		if(!(rp = rdy_head[q])) {
+			TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
+			continue;
+		}
+		assert(proc_is_runnable(rp));
+		if (priv(rp)->s_flags & BILLABLE)	 	
+			get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
+		return rp;
+	}
+
+	q = curr_q;
+	do {
+		rp = rdy_head[curr_q];
+
+
+		if(!rp) {
+			TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
+			curr_q = (curr_q+1) % 8;
+		} else {
+			assert(proc_is_runnable(rp));
+			if (priv(rp)->s_flags & BILLABLE)	 	
+				get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
+
+			curr_q = (curr_q+1) % 8;
+			return rp;
+		}
+
+	} while (curr_q != q);
+
+	q = 15;
 	if(!(rp = rdy_head[q])) {
 		TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
-		continue;
+	} else {
+		assert(proc_is_runnable(rp));
+		if (priv(rp)->s_flags & BILLABLE)	 	
+			get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
+		return rp;
 	}
-	assert(proc_is_runnable(rp));
-	if (priv(rp)->s_flags & BILLABLE)	 	
-		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
-	return rp;
-  }
   return NULL;
 }
 

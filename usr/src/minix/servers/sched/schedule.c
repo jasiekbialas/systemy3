@@ -8,6 +8,7 @@
  *   init_scheduling      Called from main.c to set up/prepare scheduling
  */
 #include "sched.h"
+#include <math.h>
 #include "schedproc.h"
 #include <assert.h>
 #include <minix/com.h>
@@ -99,8 +100,32 @@ int do_noquantum(message *m_ptr)
 	}
 
 	rmp = &schedproc[proc_nr_n];
-	if (rmp->priority < MIN_USER_Q) {
-		rmp->priority += 1; /* lower priority */
+	rmp -= 1;
+
+	if (rmp->repeat == 0) {
+		rmp->repeat = 1;
+		int add_prio = 1;
+		int mod = rmp->priority%4;
+
+		switch (rmp->original_priority) {
+			case 0:
+				if(mod == 0) rmp->repeat = 2;
+				if(mod == 1) rmp->repeat = 4;
+				break;
+			case 1:
+				if(mod == 1) rmp->repeat = 2;
+				if(mod == 2) add_prio = 2;
+				break;
+			case 2:
+				if(mod == 3) add_prio = 2;
+				if(mod == 2) add_prio = 3;
+				break;
+			case 3:
+				add_prio = 4 - ((mod+2) % 4);
+				break;
+		}
+
+		rmp ->priority = (rmp -> priority + add_prio) % 8;
 	}
 
 	if ((rv = schedule_process_local(rmp)) != OK) {
@@ -137,12 +162,19 @@ int do_stop_scheduling(message *m_ptr)
 	return OK;
 }
 
+static int get_kudos_queue(int kudos) {
+	if(kudos >= 50) return 0;
+	if(kudos >= 25) return 1;
+	if(kudos >= 10) return 2;
+	return 3;
+}
+
 /*===========================================================================*
  *				do_start_scheduling			     *
  *===========================================================================*/
 int do_start_scheduling(message *m_ptr)
 {
-	register struct schedproc *rmp;
+	register struct schedproc *rmp,*parent;
 	int rv, proc_nr_n, parent_nr_n;
 	
 	/* we can handle two kinds of messages here */
@@ -163,18 +195,16 @@ int do_start_scheduling(message *m_ptr)
 	/* Populate process slot */
 	rmp->endpoint     = m_ptr->m_lsys_sched_scheduling_start.endpoint;
 	rmp->parent       = m_ptr->m_lsys_sched_scheduling_start.parent;
-	rmp->max_priority = m_ptr->m_lsys_sched_scheduling_start.maxprio;
-	if (rmp->max_priority >= NR_SCHED_QUEUES) {
-		return EINVAL;
-	}
-
+	rmp->kudos = 0;
+	
 	/* Inherit current priority and time slice from parent. Since there
 	 * is currently only one scheduler scheduling the whole system, this
 	 * value is local and we assert that the parent endpoint is valid */
 	if (rmp->endpoint == rmp->parent) {
 		/* We have a special case here for init, which is the first
 		   process scheduled, and the parent of itself. */
-		rmp->priority   = USER_Q;
+		// rmp->priority   = USER_Q;
+
 		rmp->time_slice = DEFAULT_USER_TIME_SLICE;
 
 		/*
@@ -195,7 +225,8 @@ int do_start_scheduling(message *m_ptr)
 		/* We have a special case here for system processes, for which
 		 * quanum and priority are set explicitly rather than inherited 
 		 * from the parent */
-		rmp->priority   = rmp->max_priority;
+
+
 		rmp->time_slice = m_ptr->m_lsys_sched_scheduling_start.quantum;
 		break;
 		
@@ -207,7 +238,12 @@ int do_start_scheduling(message *m_ptr)
 				&parent_nr_n)) != OK)
 			return rv;
 
-		rmp->priority = schedproc[parent_nr_n].priority;
+		parent = &schedproc[parent_nr_n];
+
+		rmp->kudos = parent->kudos / 2;
+		parent->kudos = parent->kudos%2 ? (parent->kudos/2) + 1 : parent->kudos/2;
+
+		parent->original_priority = get_kudos_queue(parent->kudos);
 		rmp->time_slice = schedproc[parent_nr_n].time_slice;
 		break;
 		
@@ -215,6 +251,8 @@ int do_start_scheduling(message *m_ptr)
 		/* not reachable */
 		assert(0);
 	}
+	rmp->original_priority = get_kudos_queue(rmp->kudos);
+	rmp->priority = KUDOS_Q_0 + rmp->original_priority;
 
 	/* Take over scheduling the process. The kernel reply message populates
 	 * the processes current priority and its time slice */
@@ -273,32 +311,26 @@ int do_nice(message *m_ptr)
 
 	rmp = &schedproc[proc_nr_n];
 	new_q = m_ptr->m_pm_sched_scheduling_set_nice.maxprio;
+
 	if (new_q >= NR_SCHED_QUEUES) {
 		return EINVAL;
 	}
 
 	/* Store old values, in case we need to roll back the changes */
-	old_q     = rmp->priority;
-	old_max_q = rmp->max_priority;
+	// old_q     = rmp->priority;
+	// old_max_q = rmp->max_priority;
 
 	/* Update the proc entry and reschedule the process */
-	rmp->max_priority = rmp->priority = new_q;
+	// rmp->max_priority = rmp->priority = new_q;
 
-	if ((rv = schedule_process_local(rmp)) != OK) {
-		/* Something went wrong when rescheduling the process, roll
-		 * back the changes to proc struct */
-		rmp->priority     = old_q;
-		rmp->max_priority = old_max_q;
-	}
+	// if ((rv = schedule_process_local(rmp)) != OK) {
+	// 	/* Something went wrong when rescheduling the process, roll
+	// 	 * back the changes to proc struct */
+	// 	rmp->priority     = old_q;
+	// 	rmp->max_priority = old_max_q;
+	// }
 
 	return rv;
-}
-
-static int get_kudos_queue(int kudos) {
-	if(kudos >= 50) return 0;
-	if(kudos >= 25) return 1;
-	if(kudos >= 10) return 2;
-	return 3;
 }
 
 /*===========================================================================*
@@ -308,9 +340,7 @@ int do_kudos(message *m_ptr)
 {
 	printf("do_kudos\n");
 	struct schedproc *rmp;
-	int rv;
 	int proc_nr_n;
-	unsigned new_q, old_q, old_kudos;
 
 	/* check who can send you requests */
 	if (!accept_message(m_ptr))
@@ -326,23 +356,9 @@ int do_kudos(message *m_ptr)
 	rmp->kudos += 1;
 	m_ptr -> m1_i1 = rmp -> kudos;
 
-	/* Store old values, in case we need to roll back the changes */
-	old_q = rmp->priority;
-	new_q = get_kudos_queue(rmp->kudos);
-	rv = OK;
+	rmp -> original_priority = get_kudos_queue(rmp->kudos);
 
-	// if(old_q != new_q) {
-	// /* Update the proc entry and reschedule the process */
-	// 	rmp->priority = new_q;
-
-	// 	if ((rv = schedule_process_local(rmp)) != OK) {
-	// 		/* Something went wrong when rescheduling the process, roll
-	// 			* back the changes to proc struct */
-	// 		rmp->priority = old_q;
-	// 		rmp->kudos -= 1;
-	// 	}
-	// }
-	return rv;
+	return OK;
 }
 
 
@@ -387,9 +403,9 @@ static int schedule_process(struct schedproc * rmp, unsigned flags)
 
 void init_scheduling(void)
 {
-	balance_timeout = BALANCE_TIMEOUT * sys_hz();
-	init_timer(&sched_timer);
-	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
+	// balance_timeout = BALANCE_TIMEOUT * sys_hz();
+	// init_timer(&sched_timer);
+	// set_timer(&sched_timer, balance_timeout, balance_queues, 0);
 }
 
 /*===========================================================================*
@@ -401,19 +417,19 @@ void init_scheduling(void)
  * quantum. This function will find all proccesses that have been bumped down,
  * and pulls them back up. This default policy will soon be changed.
  */
-static void balance_queues(minix_timer_t *tp)
-{
-	struct schedproc *rmp;
-	int proc_nr;
+// static void balance_queues(minix_timer_t *tp)
+// {
+// 	struct schedproc *rmp;
+// 	int proc_nr;
 
-	for (proc_nr=0, rmp=schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
-		if (rmp->flags & IN_USE) {
-			if (rmp->priority > rmp->max_priority) {
-				rmp->priority -= 1; /* increase priority */
-				schedule_process_local(rmp);
-			}
-		}
-	}
+// 	for (proc_nr=0, rmp=schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
+// 		if (rmp->flags & IN_USE) {
+// 			if (rmp->priority > rmp->max_priority) {
+// 				rmp->priority -= 1; /* increase priority */
+// 				schedule_process_local(rmp);
+// 			}
+// 		}
+// 	}
 
-	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
-}
+// 	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
+// }
