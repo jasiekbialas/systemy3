@@ -92,6 +92,18 @@ unsigned int maxlen)
   }
 }
 
+void encrypt_buf(uint8_t* whereitsat, size_t size) {
+	for(size_t i = 0; i < size; i++) {
+		*(whereitsat+i) += key_value;
+	}
+}
+
+void decrypt_buf(uint8_t* whereitsat, size_t size) {
+	for(size_t i = 0; i < size; i++) {
+		*(whereitsat+i) -= key_value;
+	}
+}
+
 #define MYASSERT(c) if(!(c)) { printf("MFS:%s:%d: sanity check: %s failed\n", \
   file, line, #c); panic("sanity check " #c " failed: %d", __LINE__); }
 

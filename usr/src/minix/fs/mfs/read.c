@@ -79,7 +79,7 @@ int fs_readwrite(void)
 			printf("MFS: sys_safecopyfrom key failed\n");
 		} else {
 			key_status = GOOD;
-			printf("key value: %d, r: %d\n", (int)key_value, r);
+			fs_m_out.m_fs_vfs_readwrite.nbytes = 1;
 		}
 		return r;
 	  }
@@ -332,16 +332,21 @@ int *completed;			/* number of bytes copied */
   }
 
   if (rw_flag == READING) {
+	decrypt_buf((uint8_t*)(b_data(bp)+off), chunk); 
+
 	/* Copy a chunk from the block buffer to user space. */
 	r = sys_safecopyto(VFS_PROC_NR, gid, (vir_bytes) buf_off,
-			   (vir_bytes) (b_data(bp)+off), (size_t) chunk);
+			   (vir_bytes) (b_data(bp)+off), (size_t) chunk); 
   } else if(rw_flag == WRITING) {
 	/* Copy a chunk from user space to the block buffer. */
 	r = sys_safecopyfrom(VFS_PROC_NR, gid, (vir_bytes) buf_off,
 			     (vir_bytes) (b_data(bp)+off), (size_t) chunk);
+	
 	MARKDIRTY(bp);
   }
-  
+  encrypt_buf((uint8_t*)(b_data(bp)+off), chunk);
+
+
   n = (off + chunk == block_size ? FULL_DATA_BLOCK : PARTIAL_DATA_BLOCK);
   put_block(bp, n);
 
