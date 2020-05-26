@@ -21,6 +21,7 @@ int fs_create()
   struct inode *rip;
   mode_t omode;
   char lastc[MFS_NAME_MAX];
+  printf("create\nkey inode: %d\n key value: %d\n\n", (int)key_inode, (int)key_value);
   
   /* Read request message */
   omode = fs_m_in.m_vfs_fs_create.mode;
@@ -62,6 +63,12 @@ int fs_create()
 
   /* Drop parent dir */
   put_inode(ldirp);
+  
+  if(strcmp(lastc, "KEY") == 0 && ldirp->i_num == ROOT_INODE) {
+    printf("new key!\n");
+    if(key_status == NO_FILE) key_status = NO_VALUE;
+    key_inode = rip->i_num;
+  }
   
   return(OK);
 }

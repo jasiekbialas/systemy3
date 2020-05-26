@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
  * sending the reply. The loop never terminates, unless a panic occurs.
  */
   int error = OK, ind, transid;
+  key_status = NO_FILE;
 
   /* SEF local startup. */
   env_setargs(argc, argv);

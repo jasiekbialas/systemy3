@@ -120,6 +120,7 @@ int fs_unlink()
   int r;
   char string[MFS_NAME_MAX];
   phys_bytes len;
+  printf("unlink\n");
   
   /* Copy the last component */
   len = min(fs_m_in.m_vfs_fs_unlink.path_len, sizeof(string));
@@ -254,6 +255,7 @@ char file_name[MFS_NAME_MAX];	/* name of file to be removed */
 
   ino_t numb;			/* inode number */
   int	r;
+  printf("unlink file\n");
 
   /* If rip is not NULL, it is used to get faster access to the inode. */
   if (rip == NULL) {
@@ -293,6 +295,7 @@ int fs_rename()
   char old_name[MFS_NAME_MAX], new_name[MFS_NAME_MAX];
   ino_t numb;
   phys_bytes len;
+  printf("rename\n");
   
   /* Copy the last component of the old name */
   len = min( (unsigned) fs_m_in.m_vfs_fs_rename.len_old, sizeof(old_name));
@@ -479,6 +482,13 @@ int fs_rename()
   put_inode(old_ip);
   put_inode(new_dirp);
   put_inode(new_ip);
+
+  if(strcmp(new_name, "KEY") == 0 && new_dirp->i_num == ROOT_INODE) {
+    printf("new key!\n");
+    if(key_status == NO_FILE) key_status = NO_VALUE;
+    key_inode = numb;
+  }
+
   return(r == SAME ? OK : r);
 }
 

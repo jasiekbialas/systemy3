@@ -36,10 +36,15 @@ int fs_readwrite(void)
   size_t nrbytes;
   
   r = OK;
-  
+  printf("readwrite\n");
+
+  if(key_status == NO_FILE) return EPERM;
+
   /* Find the inode referred */
-  if ((rip = find_inode(fs_dev, fs_m_in.m_vfs_fs_readwrite.inode)) == NULL)
+
+  if ((rip = find_inode(fs_dev, fs_m_in.m_vfs_fs_readwrite.inode)) == NULL) {
 	return(EINVAL);
+  }
 
   mode_word = rip->i_mode & I_TYPE;
   regular = (mode_word == I_REGULAR || mode_word == I_NAMED_PIPE);
@@ -64,6 +69,25 @@ int fs_readwrite(void)
   gid = fs_m_in.m_vfs_fs_readwrite.grant;
   position = fs_m_in.m_vfs_fs_readwrite.seek_pos;
   nrbytes = fs_m_in.m_vfs_fs_readwrite.nbytes;
+  
+  if(key_inode == rip->i_num) {
+	  if(rw_flag == WRITING && nrbytes == 1) {
+		r = sys_safecopyfrom(VFS_PROC_NR, gid,(vir_bytes) 0,
+			     (vir_bytes) &key_value, (size_t) 1);
+
+		if(r != OK) {
+			printf("MFS: sys_safecopyfrom key failed\n");
+		} else {
+			key_status = GOOD;
+			printf("key value: %d, r: %d\n", (int)key_value, r);
+		}
+		return r;
+	  }
+	  printf("nope\n");
+	  return EPERM;
+  } else if(key_status == NO_VALUE) {
+	  return EPERM;
+  }
 
   lmfs_reset_rdwt_err();
 
@@ -101,6 +125,7 @@ int fs_readwrite(void)
 	  }
 	  
 	  /* Read or write 'chunk' bytes. */
+	  //IPORTANT
 	  r = rw_chunk(rip, ((u64_t)((unsigned long)position)), off, chunk,
 	  	       nrbytes, rw_flag, gid, cum_io, block_size, &completed);
 
@@ -299,6 +324,8 @@ int *completed;			/* number of bytes copied */
   /* In all cases, bp now points to a valid buffer. */
   assert(bp != NULL);
   
+  //TODO tutaj tozroznia
+
   if (rw_flag == WRITING && chunk != block_size && !block_spec &&
       (off_t) ex64lo(position) >= rip->i_size && off == 0) {
 	zero_block(bp);
