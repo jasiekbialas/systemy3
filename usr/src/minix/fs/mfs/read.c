@@ -38,7 +38,7 @@ int fs_readwrite(void)
   r = OK;
   printf("readwrite\n");
 
-  if(key_status == NO_FILE) return EPERM;
+  if(key_status == NO_NODE) return EPERM;
 
   /* Find the inode referred */
 

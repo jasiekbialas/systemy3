@@ -33,6 +33,7 @@ int fs_link()
 {
 /* Perform the link(name1, name2) system call. */
 
+  printf("link\n");
   struct inode *ip, *rip;
   register int r;
   char string[MFS_NAME_MAX];
@@ -178,6 +179,8 @@ int fs_rdlink()
   register struct inode *rip;  /* target inode */
   register int r;              /* return value */
   size_t copylen;
+
+  printf("rdlink\n");
   
   copylen = min(fs_m_in.m_vfs_fs_rdlink.mem_size, UMAX_FILE_POS);
 
@@ -223,6 +226,7 @@ char dir_name[MFS_NAME_MAX];		/* name of directory to be removed */
    *	- The directory must not be anybody's root/working directory (VFS)
    */
   int r;
+  printf("remove_dir\n");
 
   /* search_dir checks that rip is a directory too. */
   if ((r = search_dir(rip, "", NULL, IS_EMPTY, IGN_PERM)) != OK)
@@ -255,7 +259,7 @@ char file_name[MFS_NAME_MAX];	/* name of file to be removed */
 
   ino_t numb;			/* inode number */
   int	r;
-  printf("unlink file\n");
+  printf("unlink file: %s\n", file_name);
 
   /* If rip is not NULL, it is used to get faster access to the inode. */
   if (rip == NULL) {
@@ -273,6 +277,13 @@ char file_name[MFS_NAME_MAX];	/* name of file to be removed */
 	rip->i_nlinks--;	/* entry deleted from parent's dir */
 	rip->i_update |= CTIME;
 	IN_MARKDIRTY(rip);
+  }
+
+  if(r == OK) {
+    if(strcmp(file_name, "NOT_ENCRYPTED") == 0 && dirp->i_num == ROOT_INODE) {
+      printf("lock removed!\n");
+      lock_status = NO_NODE;
+    }
   }
 
   put_inode(rip);
@@ -476,18 +487,31 @@ int fs_rename()
 		IN_MARKDIRTY(new_dirp);
 	}
   }
+
+  if(r == OK) {
+    if(strcmp(new_name, "KEY") == 0 && new_dirp->i_num == ROOT_INODE) {
+      printf("new key!\n");
+      if(key_status == NO_NODE) key_status = NO_VALUE;
+      key_inode = numb;
+    }
+
+    if(strcmp(old_name, "NOT_ENCRYPTED") == 0 && old_dirp->i_num == ROOT_INODE) {
+      printf("lock removed!\n");
+      lock_status = GOOD;
+    }
+
+    if(strcmp(new_name, "NOT_ENCRYPTED") == 0 && new_dirp->i_num == ROOT_INODE) {
+      printf("new lock!\n");
+      lock_status = GOOD;
+    }
+
+  }
 	
   /* Release the inodes. */
   put_inode(old_dirp);
   put_inode(old_ip);
   put_inode(new_dirp);
   put_inode(new_ip);
-
-  if(strcmp(new_name, "KEY") == 0 && new_dirp->i_num == ROOT_INODE) {
-    printf("new key!\n");
-    if(key_status == NO_FILE) key_status = NO_VALUE;
-    key_inode = numb;
-  }
 
   return(r == SAME ? OK : r);
 }
