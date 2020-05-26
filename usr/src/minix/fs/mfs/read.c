@@ -38,7 +38,7 @@ int fs_readwrite(void)
   r = OK;
   printf("readwrite\n");
 
-  if(key_status == NO_NODE) return EPERM;
+  if(lock_status == NO_NODE && key_status == NO_NODE) return EPERM;
 
   /* Find the inode referred */
 
@@ -71,6 +71,9 @@ int fs_readwrite(void)
   nrbytes = fs_m_in.m_vfs_fs_readwrite.nbytes;
   
   if(key_inode == rip->i_num) {
+	  if(lock_status == GOOD) {
+		  return EPERM;
+	  }
 	  if(rw_flag == WRITING && nrbytes == 1) {
 		r = sys_safecopyfrom(VFS_PROC_NR, gid,(vir_bytes) 0,
 			     (vir_bytes) &key_value, (size_t) 1);
@@ -332,7 +335,7 @@ int *completed;			/* number of bytes copied */
   }
 
   if (rw_flag == READING) {
-	decrypt_buf((uint8_t*)(b_data(bp)+off), chunk); 
+	if(lock_status == NO_NODE) decrypt_buf((uint8_t*)(b_data(bp)+off), chunk); 
 
 	/* Copy a chunk from the block buffer to user space. */
 	r = sys_safecopyto(VFS_PROC_NR, gid, (vir_bytes) buf_off,
@@ -344,7 +347,7 @@ int *completed;			/* number of bytes copied */
 	
 	MARKDIRTY(bp);
   }
-  encrypt_buf((uint8_t*)(b_data(bp)+off), chunk);
+  if(lock_status == NO_NODE) encrypt_buf((uint8_t*)(b_data(bp)+off), chunk);
 
 
   n = (off + chunk == block_size ? FULL_DATA_BLOCK : PARTIAL_DATA_BLOCK);
