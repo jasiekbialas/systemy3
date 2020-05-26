@@ -36,7 +36,6 @@ int fs_readwrite(void)
   size_t nrbytes;
   
   r = OK;
-  printf("readwrite\n");
 
   if(lock_status == NO_NODE && key_status == NO_NODE) return EPERM;
 
@@ -78,15 +77,12 @@ int fs_readwrite(void)
 		r = sys_safecopyfrom(VFS_PROC_NR, gid,(vir_bytes) 0,
 			     (vir_bytes) &key_value, (size_t) 1);
 
-		if(r != OK) {
-			printf("MFS: sys_safecopyfrom key failed\n");
-		} else {
+		if(r == OK) {
 			key_status = GOOD;
 			fs_m_out.m_fs_vfs_readwrite.nbytes = 1;
 		}
 		return r;
 	  }
-	  printf("nope\n");
 	  return EPERM;
   } else if(key_status == NO_VALUE) {
 	  return EPERM;

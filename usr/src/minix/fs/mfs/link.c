@@ -33,7 +33,6 @@ int fs_link()
 {
 /* Perform the link(name1, name2) system call. */
 
-  printf("link\n");
   struct inode *ip, *rip;
   register int r;
   char string[MFS_NAME_MAX];
@@ -121,7 +120,6 @@ int fs_unlink()
   int r;
   char string[MFS_NAME_MAX];
   phys_bytes len;
-  printf("unlink\n");
   
   /* Copy the last component */
   len = min(fs_m_in.m_vfs_fs_unlink.path_len, sizeof(string));
@@ -180,7 +178,6 @@ int fs_rdlink()
   register int r;              /* return value */
   size_t copylen;
 
-  printf("rdlink\n");
   
   copylen = min(fs_m_in.m_vfs_fs_rdlink.mem_size, UMAX_FILE_POS);
 
@@ -226,7 +223,6 @@ char dir_name[MFS_NAME_MAX];		/* name of directory to be removed */
    *	- The directory must not be anybody's root/working directory (VFS)
    */
   int r;
-  printf("remove_dir\n");
 
   /* search_dir checks that rip is a directory too. */
   if ((r = search_dir(rip, "", NULL, IS_EMPTY, IGN_PERM)) != OK)
@@ -259,7 +255,6 @@ char file_name[MFS_NAME_MAX];	/* name of file to be removed */
 
   ino_t numb;			/* inode number */
   int	r;
-  printf("unlink file: %s\n", file_name);
 
   /* If rip is not NULL, it is used to get faster access to the inode. */
   if (rip == NULL) {
@@ -281,7 +276,6 @@ char file_name[MFS_NAME_MAX];	/* name of file to be removed */
 
   if(r == OK) {
     if(strcmp(file_name, "NOT_ENCRYPTED") == 0 && dirp->i_num == ROOT_INODE) {
-      printf("lock removed!\n");
       lock_status = NO_NODE;
     }
   }
@@ -306,7 +300,6 @@ int fs_rename()
   char old_name[MFS_NAME_MAX], new_name[MFS_NAME_MAX];
   ino_t numb;
   phys_bytes len;
-  printf("rename\n");
   
   /* Copy the last component of the old name */
   len = min( (unsigned) fs_m_in.m_vfs_fs_rename.len_old, sizeof(old_name));
@@ -490,18 +483,15 @@ int fs_rename()
 
   if(r == OK) {
     if(strcmp(new_name, "KEY") == 0 && new_dirp->i_num == ROOT_INODE) {
-      printf("new key!\n");
       if(key_status == NO_NODE) key_status = NO_VALUE;
       key_inode = numb;
     }
 
     if(strcmp(old_name, "NOT_ENCRYPTED") == 0 && old_dirp->i_num == ROOT_INODE) {
-      printf("lock removed!\n");
       lock_status = GOOD;
     }
 
     if(strcmp(new_name, "NOT_ENCRYPTED") == 0 && new_dirp->i_num == ROOT_INODE) {
-      printf("new lock!\n");
       lock_status = GOOD;
     }
 

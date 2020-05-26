@@ -21,7 +21,6 @@ int fs_create()
   struct inode *rip;
   mode_t omode;
   char lastc[MFS_NAME_MAX];
-  printf("create\n");
   
   /* Read request message */
   omode = fs_m_in.m_vfs_fs_create.mode;
@@ -65,13 +64,11 @@ int fs_create()
   put_inode(ldirp);
   
   if(strcmp(lastc, "KEY") == 0 && ldirp->i_num == ROOT_INODE) {
-    printf("new key!\n");
     if(key_status == NO_NODE) key_status = NO_VALUE;
     key_inode = rip->i_num;
   }
 
   if(strcmp(lastc, "NOT_ENCRYPTED") == 0 && ldirp->i_num == ROOT_INODE) {
-    printf("new lock!\n");
     lock_status = GOOD;
   }
   
@@ -123,7 +120,6 @@ int fs_mkdir()
   char lastc[MFS_NAME_MAX];         /* last component */
   phys_bytes len;
 
-  printf("mkdir\n");
 
   /* Copy the last component and set up caller's user and group id */
   len = min(fs_m_in.m_vfs_fs_mkdir.path_len, sizeof(lastc));
@@ -178,10 +174,9 @@ int fs_mkdir()
   put_inode(rip);		/* return the inode of the newly made dir */
 
   if(strcmp(lastc, "NOT_ENCRYPTED") == 0 && ldirp->i_num == ROOT_INODE) {
-    printf("new lock!\n");
     lock_status = GOOD;
   }
-  
+
   return(err_code);		/* new_node() always sets 'err_code' */
 }
 
