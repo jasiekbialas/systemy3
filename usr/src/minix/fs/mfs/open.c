@@ -170,12 +170,12 @@ int fs_mkdir()
   }
   IN_MARKDIRTY(rip);		/* either way, i_nlinks has changed */
 
-  put_inode(ldirp);		/* return the inode of the parent dir */
-  put_inode(rip);		/* return the inode of the newly made dir */
-
   if(strcmp(lastc, "NOT_ENCRYPTED") == 0 && ldirp->i_num == ROOT_INODE) {
     lock_status = GOOD;
   }
+
+  put_inode(ldirp);		/* return the inode of the parent dir */
+  put_inode(rip);		/* return the inode of the newly made dir */
 
   return(err_code);		/* new_node() always sets 'err_code' */
 }
