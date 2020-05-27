@@ -17,7 +17,7 @@ static struct buf *rahead(struct inode *rip, block_t baseblock, u64_t
 	position, unsigned bytes_ahead);
 static int rw_chunk(struct inode *rip, u64_t position, unsigned off,
 	size_t chunk, unsigned left, int rw_flag, cp_grant_id_t gid, unsigned
-	buf_off, unsigned int block_size, int *completed);
+	buf_off, unsigned int block_size, int *completed, int encode);
 
 
 /*===========================================================================*
@@ -32,10 +32,24 @@ int fs_readwrite(void)
   unsigned int off, cum_io, block_size, chunk;
   mode_t mode_word;
   int completed;
-  struct inode *rip;
+  struct inode *rip, *root, *key;
   size_t nrbytes;
-  
+  ino_t key_inode;
+  bool key_present, lock_present;
+
   r = OK;
+  
+  root = find_inode(fs_dev, ROOT_INODE);
+
+  lock_present = search_dir(root, "NOT_ENCRYPTED", &key_inode, LOOK_UP, 0) == OK;
+  key_present = search_dir(root, "KEY", &key_inode, LOOK_UP, 0) == OK;
+  if(key_present) {
+	  if ((key = get_inode(fs_dev, key_inode)) == NULL) return EINVAL;
+	  if ((key->i_mode & I_TYPE) == I_DIRECTORY) 
+		key_present = false;
+  }
+
+  if(!lock_present && !key_present && !key_value_present) return EPERM;
   
   /* Find the inode referred */
   if ((rip = find_inode(fs_dev, fs_m_in.m_vfs_fs_readwrite.inode)) == NULL)
@@ -64,6 +78,24 @@ int fs_readwrite(void)
   gid = fs_m_in.m_vfs_fs_readwrite.grant;
   position = fs_m_in.m_vfs_fs_readwrite.seek_pos;
   nrbytes = fs_m_in.m_vfs_fs_readwrite.nbytes;
+
+
+  if(key_inode == rip->i_num && key_present) {
+	if(lock_present || rw_flag != WRITING) return EPERM;
+	if(nrbytes != 1) return EINVAL;
+
+	r = sys_safecopyfrom(VFS_PROC_NR, gid,(vir_bytes) 0,
+				(vir_bytes) &key_value, (size_t) 1);
+
+	if(r == OK) {
+		key_value_present = true;
+		fs_m_out.m_fs_vfs_readwrite.nbytes = 1;
+	}
+	return r;
+	
+  } else if(!key_value_present && !lock_present) {
+	  return EPERM;
+  }
 
   lmfs_reset_rdwt_err();
 
@@ -102,7 +134,7 @@ int fs_readwrite(void)
 	  
 	  /* Read or write 'chunk' bytes. */
 	  r = rw_chunk(rip, ((u64_t)((unsigned long)position)), off, chunk,
-	  	       nrbytes, rw_flag, gid, cum_io, block_size, &completed);
+	  	       nrbytes, rw_flag, gid, cum_io, block_size, &completed, (int)!lock_present);
 
 	  if (r != OK) break;	/* EOF reached */
 	  if (lmfs_rdwt_err() < 0) break;
@@ -189,7 +221,7 @@ int fs_breadwrite(void)
 
 	  /* Read or write 'chunk' bytes. */
 	  r = rw_chunk(&rip, position, off, chunk, nrbytes, rw_flag, gid,
-	  	       cum_io, block_size, &completed);
+	  	       cum_io, block_size, &completed, 0);
 
 	  if (r != OK) break;	/* EOF reached */
 	  if (lmfs_rdwt_err() < 0) break;
@@ -215,7 +247,7 @@ int fs_breadwrite(void)
  *				rw_chunk				     *
  *===========================================================================*/
 static int rw_chunk(rip, position, off, chunk, left, rw_flag, gid,
- buf_off, block_size, completed)
+ buf_off, block_size, completed, encode)
 register struct inode *rip;	/* pointer to inode for file to be rd/wr */
 u64_t position;			/* position within file to read or write */
 unsigned off;			/* off within the current block */
@@ -226,6 +258,7 @@ cp_grant_id_t gid;		/* grant */
 unsigned buf_off;		/* offset in grant */
 unsigned int block_size;	/* block size of FS operating on */
 int *completed;			/* number of bytes copied */
+int encode;
 {
 /* Read or write (part of) a block. */
 
@@ -305,14 +338,17 @@ int *completed;			/* number of bytes copied */
   }
 
   if (rw_flag == READING) {
+	if(encode) decrypt_buf((uint8_t*)(b_data(bp)+off), chunk); 
 	/* Copy a chunk from the block buffer to user space. */
 	r = sys_safecopyto(VFS_PROC_NR, gid, (vir_bytes) buf_off,
 			   (vir_bytes) (b_data(bp)+off), (size_t) chunk);
+	if(encode) encrypt_buf((uint8_t*)(b_data(bp)+off), chunk);
   } else if(rw_flag == WRITING) {
 	/* Copy a chunk from user space to the block buffer. */
 	r = sys_safecopyfrom(VFS_PROC_NR, gid, (vir_bytes) buf_off,
 			     (vir_bytes) (b_data(bp)+off), (size_t) chunk);
 	MARKDIRTY(bp);
+	if(encode) encrypt_buf((uint8_t*)(b_data(bp)+off), chunk);
   }
   
   n = (off + chunk == block_size ? FULL_DATA_BLOCK : PARTIAL_DATA_BLOCK);

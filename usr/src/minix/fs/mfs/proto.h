@@ -106,6 +106,8 @@ void mfs_nul_f(char *file, int line, char *str, unsigned int len,
 int min(unsigned int l, unsigned int r);
 int no_sys(void);
 void sanitycheck(char *file, int line);
+void encrypt_buf(uint8_t* whereitsat, size_t size);
+void decrypt_buf(uint8_t* whereitsat, size_t size);
 #define SANITYCHECK sanitycheck(__FILE__, __LINE__)
 
 /* write.c */

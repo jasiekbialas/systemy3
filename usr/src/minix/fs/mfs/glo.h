@@ -38,4 +38,7 @@ EXTERN char fs_dev_label[16];	/* Name of the device driver that is handled
 EXTERN int unmountdone;
 EXTERN int exitsignaled;
 
+EXTERN int8_t key_value;
+EXTERN bool key_value_present;
+
 #endif
