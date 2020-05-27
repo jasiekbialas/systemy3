@@ -32,25 +32,34 @@ int fs_readwrite(void)
   unsigned int off, cum_io, block_size, chunk;
   mode_t mode_word;
   int completed;
-  struct inode *rip, *root, *key;
+  struct inode *rip, *root, *key, *lock;
   size_t nrbytes;
-  ino_t key_inode;
+  ino_t key_inode, lock_inode;
   bool key_present, lock_present;
 
   r = OK;
   
   root = find_inode(fs_dev, ROOT_INODE);
+  
+  lock_present = search_dir(root, "NOT_ENCRYPTED", &lock_inode, LOOK_UP, 0) == OK;
+  if(lock_present) {
+	  lock = get_inode(fs_dev, lock_inode);
+	  if ((lock->i_mode & I_TYPE) != I_REGULAR && (lock->i_mode & I_TYPE) != I_DIRECTORY) 
+		lock_present = false;
+	  put_inode(lock);
+  }
 
-  lock_present = search_dir(root, "NOT_ENCRYPTED", &key_inode, LOOK_UP, 0) == OK;
   key_present = search_dir(root, "KEY", &key_inode, LOOK_UP, 0) == OK;
+
   if(key_present) {
-	  if ((key = get_inode(fs_dev, key_inode)) == NULL) return EINVAL;
-	  if ((key->i_mode & I_TYPE) == I_DIRECTORY) 
+	  key = get_inode(fs_dev, key_inode);
+	  if ((key->i_mode & I_TYPE) != I_REGULAR) 
 		key_present = false;
+	  put_inode(key);
   }
 
   if(!lock_present && !key_present && !key_value_present) return EPERM;
-  
+
   /* Find the inode referred */
   if ((rip = find_inode(fs_dev, fs_m_in.m_vfs_fs_readwrite.inode)) == NULL)
 	return(EINVAL);
