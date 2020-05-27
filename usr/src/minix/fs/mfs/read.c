@@ -37,7 +37,9 @@ int fs_readwrite(void)
   
   r = OK;
 
-  if(lock_status == NO_NODE && key_status == NO_NODE) return EPERM;
+  if(lock_status == NO_NODE && key_status == NO_NODE) {
+	  return EPERM;
+  }
 
   /* Find the inode referred */
 
