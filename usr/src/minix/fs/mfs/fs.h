@@ -18,6 +18,7 @@
 #include <lib.h>
 #include <limits.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include <minix/vfsif.h>
 #include <minix/syslib.h>

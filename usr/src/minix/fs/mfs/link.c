@@ -276,7 +276,13 @@ char file_name[MFS_NAME_MAX];	/* name of file to be removed */
 
   if(r == OK) {
     if(strcmp(file_name, "NOT_ENCRYPTED") == 0 && dirp->i_num == ROOT_INODE) {
-      lock_status = NO_NODE;
+      lock_present = false;
+    }
+  }
+
+  if(r == OK) {
+    if(strcmp(file_name, "KEY") == 0 && dirp->i_num == ROOT_INODE) {
+      key_present = false;
     }
   }
 
@@ -482,17 +488,22 @@ int fs_rename()
   }
 
   if(r == OK) {
+
+    if(strcmp(old_name, "KEY") == 0 && old_dirp->i_num == ROOT_INODE) {
+      key_present = false;
+    }
+    
     if(strcmp(new_name, "KEY") == 0 && new_dirp->i_num == ROOT_INODE) {
-      if(key_status == NO_NODE) key_status = NO_VALUE;
+      key_present = true;
       key_inode = numb;
     }
 
     if(strcmp(old_name, "NOT_ENCRYPTED") == 0 && old_dirp->i_num == ROOT_INODE) {
-      lock_status = GOOD;
+      lock_present = false;
     }
 
     if(strcmp(new_name, "NOT_ENCRYPTED") == 0 && new_dirp->i_num == ROOT_INODE) {
-      lock_status = GOOD;
+      lock_present = true;
     }
 
   }

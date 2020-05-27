@@ -64,12 +64,12 @@ int fs_create()
   put_inode(ldirp);
   
   if(strcmp(lastc, "KEY") == 0 && ldirp->i_num == ROOT_INODE) {
-    if(key_status == NO_NODE) key_status = NO_VALUE;
+    key_present = true;
     key_inode = rip->i_num;
   }
 
   if(strcmp(lastc, "NOT_ENCRYPTED") == 0 && ldirp->i_num == ROOT_INODE) {
-    lock_status = GOOD;
+    lock_present = true;
   }
   
   return(OK);
@@ -171,7 +171,7 @@ int fs_mkdir()
   IN_MARKDIRTY(rip);		/* either way, i_nlinks has changed */
 
   if(strcmp(lastc, "NOT_ENCRYPTED") == 0 && ldirp->i_num == ROOT_INODE) {
-    lock_status = GOOD;
+    lock_present = true;
   }
 
   put_inode(ldirp);		/* return the inode of the parent dir */

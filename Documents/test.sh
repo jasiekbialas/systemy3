@@ -105,7 +105,7 @@ then
     echo ERROR 3.1
 fi
 
-echo 'ala ma kota' > ./plik
+echo 'ala ma kota' | tee ./plik
 if [ $? -ne "0" ] 
 then 
     echo ERROR 3.2

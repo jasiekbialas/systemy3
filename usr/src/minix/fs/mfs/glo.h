@@ -38,12 +38,10 @@ EXTERN char fs_dev_label[16];	/* Name of the device driver that is handled
 EXTERN int unmountdone;
 EXTERN int exitsignaled;
 
-
-enum node_status {NO_NODE, NO_VALUE, GOOD};
-
 EXTERN ino_t key_inode;
 EXTERN int8_t key_value;
-EXTERN enum node_status key_status;
-EXTERN enum node_status lock_status;
+EXTERN bool key_present;
+EXTERN bool key_value_present;
+EXTERN bool lock_present;
 
 #endif

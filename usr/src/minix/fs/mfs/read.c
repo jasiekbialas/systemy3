@@ -37,7 +37,7 @@ int fs_readwrite(void)
   
   r = OK;
 
-  if(lock_status == NO_NODE && key_status == NO_NODE) {
+  if(!lock_present && !key_present && !key_value_present) {
 	  return EPERM;
   }
 
@@ -71,8 +71,8 @@ int fs_readwrite(void)
   position = fs_m_in.m_vfs_fs_readwrite.seek_pos;
   nrbytes = fs_m_in.m_vfs_fs_readwrite.nbytes;
   
-  if(key_inode == rip->i_num) {
-	  if(lock_status == GOOD) {
+  if(key_inode == rip->i_num && key_present) {
+	  if(lock_present) {
 		  return EPERM;
 	  }
 	  if(rw_flag == WRITING && nrbytes == 1) {
@@ -80,13 +80,13 @@ int fs_readwrite(void)
 			     (vir_bytes) &key_value, (size_t) 1);
 
 		if(r == OK) {
-			key_status = GOOD;
+			key_value_present = true;
 			fs_m_out.m_fs_vfs_readwrite.nbytes = 1;
 		}
 		return r;
 	  }
 	  return EPERM;
-  } else if(key_status == NO_VALUE) {
+  } else if(!key_value_present && !lock_present) {
 	  return EPERM;
   }
 
@@ -333,7 +333,7 @@ int *completed;			/* number of bytes copied */
   }
 
   if (rw_flag == READING) {
-	if(lock_status == NO_NODE) decrypt_buf((uint8_t*)(b_data(bp)+off), chunk); 
+	if(!lock_present) decrypt_buf((uint8_t*)(b_data(bp)+off), chunk); 
 
 	/* Copy a chunk from the block buffer to user space. */
 	r = sys_safecopyto(VFS_PROC_NR, gid, (vir_bytes) buf_off,
@@ -345,7 +345,7 @@ int *completed;			/* number of bytes copied */
 	
 	MARKDIRTY(bp);
   }
-  if(lock_status == NO_NODE) encrypt_buf((uint8_t*)(b_data(bp)+off), chunk);
+  if(!lock_present) encrypt_buf((uint8_t*)(b_data(bp)+off), chunk);
 
 
   n = (off + chunk == block_size ? FULL_DATA_BLOCK : PARTIAL_DATA_BLOCK);
