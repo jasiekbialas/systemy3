@@ -60,8 +60,11 @@ int fs_readwrite(void)
 
   if(!lock_present && !key_present && !key_value_present) return EPERM;
 
+  if(key_present && key_inode == fs_m_in.m_vfs_fs_readwrite.inode)
+	key->i_update = 0;
+
   /* Find the inode referred */
-  if ((rip = find_inode(fs_dev, fs_m_in.m_vfs_fs_readwrite.inode)) == NULL)
+  if ((rip = find_inode(fs_dev, fs_m_in.m_vfs_fs_readwrite.inode)) == NULL) 
 	return(EINVAL);
 
   mode_word = rip->i_mode & I_TYPE;
