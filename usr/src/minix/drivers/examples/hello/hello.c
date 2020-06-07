@@ -1,9 +1,13 @@
 #include <minix/drivers.h>
 #include <minix/chardriver.h>
+#include <sys/ioc_hello.h>
+#include <minix/ioctl.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <minix/ds.h>
 #include "hello.h"
+
 
 /*
  * Function prototypes for the hello driver.
@@ -12,6 +16,8 @@ static int hello_open(devminor_t minor, int access, endpoint_t user_endpt);
 static int hello_close(devminor_t minor);
 static ssize_t hello_read(devminor_t minor, u64_t position, endpoint_t endpt,
     cp_grant_id_t grant, size_t size, int flags, cdev_id_t id);
+static int hello_ioctl(devminor_t minor, unsigned long request, endpoint_t endpt,
+    cp_grant_id_t grant, int flags, endpoint_t user_endpt, cdev_id_t id);
 
 /* SEF functions and variables. */
 static void sef_local_startup(void);
@@ -25,12 +31,14 @@ static struct chardriver hello_tab =
     .cdr_open	= hello_open,
     .cdr_close	= hello_close,
     .cdr_read	= hello_read,
+    .cdr_ioctl  = hello_ioctl,
 };
 
 /** State variable to count the number of times the device has been opened.
  * Note that this is not the regular type of open counter: it never decreases.
  */
 static int open_counter;
+static char hello_msg[HELLO_LEN];
 
 static int hello_open(devminor_t UNUSED(minor), int UNUSED(access),
     endpoint_t UNUSED(user_endpt))
@@ -52,7 +60,7 @@ static ssize_t hello_read(devminor_t UNUSED(minor), u64_t position,
     u64_t dev_size;
     char *ptr;
     int ret;
-    char *buf = HELLO_MESSAGE;
+    char *buf = hello_msg;
 
     printf("hello_read()\n");
 
@@ -73,9 +81,36 @@ static ssize_t hello_read(devminor_t UNUSED(minor), u64_t position,
     return size;
 }
 
+static int hello_ioctl(devminor_t UNUSED(minor), unsigned long request, endpoint_t endpt,
+    cp_grant_id_t grant, int UNUSED(flags), endpoint_t user_endpt, cdev_id_t UNUSED(id))
+{
+    int rc;
+    char buf[HELLO_LEN];
+
+    switch(request) {
+    case HIOCSETMSG:
+        rc = sys_safecopyfrom(endpt, grant, 0, (vir_bytes) buf, HELLO_LEN);
+        if (rc == OK) {
+            strncpy(hello_msg, buf, HELLO_LEN);
+            hello_msg[HELLO_LEN - 1] = 0; /* To make sure it's null-terminated. */
+        }
+        break;
+
+    case HIOCGETMSG:
+        rc = sys_safecopyto(endpt, grant, 0, (vir_bytes) hello_msg, HELLO_LEN);
+        break;
+
+    default:
+        rc = ENOTTY;
+    }
+
+    return rc;
+}
+
 static int sef_cb_lu_state_save(int UNUSED(state)) {
 /* Save the state. */
     ds_publish_u32("open_counter", open_counter, DSF_OVERWRITE);
+    ds_publish_str("hello_msg", hello_msg, DSF_OVERWRITE);
 
     return OK;
 }
@@ -85,7 +120,11 @@ static int lu_state_restore() {
     u32_t value;
 
     ds_retrieve_u32("open_counter", &value);
+    ds_retrieve_str("hello_msg", hello_msg, HELLO_LEN);
+
     ds_delete_u32("open_counter");
+    ds_delete_str("hello_msg");
+
     open_counter = (int) value;
 
     return OK;
@@ -122,7 +161,9 @@ static int sef_cb_init(int type, sef_init_info_t *UNUSED(info))
     open_counter = 0;
     switch(type) {
         case SEF_INIT_FRESH:
-            printf("%s", HELLO_MESSAGE);
+            strncpy(hello_msg, HELLO_MESSAGE, HELLO_LEN);
+            hello_msg[HELLO_LEN - 1] = 0;
+            printf("%s", hello_msg);
         break;
 
         case SEF_INIT_LU:
@@ -130,11 +171,13 @@ static int sef_cb_init(int type, sef_init_info_t *UNUSED(info))
             lu_state_restore();
             do_announce_driver = FALSE;
 
-            printf("%sHey, I'm a new version!\n", HELLO_MESSAGE);
+            printf("%sHey, I'm a new version!\n", hello_msg);
         break;
 
         case SEF_INIT_RESTART:
-            printf("%sHey, I've just been restarted!\n", HELLO_MESSAGE);
+            strncpy(hello_msg, HELLO_MESSAGE, HELLO_LEN);
+            hello_msg[HELLO_LEN - 1] = 0;
+            printf("%sHey, I've just been restarted!\n", hello_msg);
         break;
     }
 
