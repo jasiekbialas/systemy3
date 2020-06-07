@@ -69,7 +69,7 @@ static int lu_state_restore(void);
 static struct chardriver dfa_tab =
 {
     .cdr_read	= dfa_read,
-    .cdr_write   = dfa_write,
+    .cdr_write  = dfa_write,
     .cdr_ioctl  = dfa_ioctl,
 };
 
@@ -78,11 +78,12 @@ static ssize_t dfa_read(devminor_t UNUSED(minor), u64_t UNUSED(position),
     cdev_id_t UNUSED(id))
 {
 
-    size_t left = size;
+    // printf("dfa read\n");
+    size_t sent_total = 0;
     size_t send;
     int ret;
 
-    send = MIN(left, BUFFER_SIZE);
+    send = MIN(size, BUFFER_SIZE);
 
     if(IS_CURRENT_ACCEPTING) {
         memset(buffer, YES, send);
@@ -90,12 +91,12 @@ static ssize_t dfa_read(devminor_t UNUSED(minor), u64_t UNUSED(position),
         memset(buffer, NO, send);
     }
 
-    while(left > 0) {
-        send = MIN(left, BUFFER_SIZE);
-        if ((ret = sys_safecopyto(endpt, grant, 0, (vir_bytes) buffer, size)) != OK) {
+    while(sent_total < size) {
+        send = MIN(size - sent_total, BUFFER_SIZE);
+        if ((ret = sys_safecopyto(endpt, grant, sent_total, (vir_bytes) buffer, send)) != OK) {
             return ret;
         }
-        left-=send;
+        sent_total += send;
     }
 
     return size;
@@ -108,13 +109,16 @@ static ssize_t dfa_write(devminor_t UNUSED(minor), u64_t UNUSED(position),
     int ret;
     size_t read;
 
-    size_t left = size;
-    while(left > 0) {
-        read = MIN(left, BUFFER_SIZE);
-        if ((ret = sys_safecopyfrom(endpt, grant, 0, (vir_bytes) buffer, read)) != OK) {
+    // printf("dfa write\n");
+
+    size_t read_total = 0;
+
+    while(read_total  < size) {
+        read = MIN(size - read_total, BUFFER_SIZE);
+        if ((ret = sys_safecopyfrom(endpt, grant, read_total, (vir_bytes) buffer, read)) != OK) {
             return ret;
         }
-        left-=read;
+        read_total+=read;
         for(size_t i = 0; i < read; i++) {
            SET_CURRENT( GET_NEXT( buffer[i] ));
         }
@@ -125,7 +129,9 @@ static ssize_t dfa_write(devminor_t UNUSED(minor), u64_t UNUSED(position),
 static int dfa_ioctl(devminor_t UNUSED(minor), unsigned long request, endpoint_t endpt,
     cp_grant_id_t grant, int UNUSED(flags), endpoint_t user_endpt, cdev_id_t UNUSED(id))
 {
-    int rc;
+    int rc = OK;
+
+    // printf("dfa ioctl\n");
 
     struct {
         uint8_t state1;
@@ -136,6 +142,7 @@ static int dfa_ioctl(devminor_t UNUSED(minor), unsigned long request, endpoint_t
     switch(request) {
     case DFAIOCRESET:
         SET_CURRENT(0);
+        break;
     case DFAIOCADD:
         rc = sys_safecopyfrom(endpt, grant, 0, (vir_bytes) &in, 3);
         if (rc == OK) {
@@ -162,6 +169,7 @@ static int dfa_ioctl(devminor_t UNUSED(minor), unsigned long request, endpoint_t
 
 static int sef_cb_lu_state_save(int UNUSED(state)) {
 /* Save the state. */
+    // printf("save state\n");
     ds_publish_mem("automata_state", automata, AUTOMATA_SIZE, DSF_OVERWRITE);
     return OK;
 }
